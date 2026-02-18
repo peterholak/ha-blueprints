@@ -277,36 +277,6 @@ trigger:
     entity_id: !input scroll_down_right_entity
     id: scroll_down_right
 
-  - platform: state
-    entity_id: !input currently_scrolling_up_left_entity
-    to: "1"
-    id: scrolling_up_left
-
-  - platform: state
-    entity_id: !input currently_scrolling_down_left_entity
-    to: "1"
-    id: scrolling_down_left
-
-  - platform: state
-    entity_id: !input currently_scrolling_up_middle_entity
-    to: "1"
-    id: scrolling_up_middle
-
-  - platform: state
-    entity_id: !input currently_scrolling_down_middle_entity
-    to: "1"
-    id: scrolling_down_middle
-
-  - platform: state
-    entity_id: !input currently_scrolling_up_right_entity
-    to: "1"
-    id: scrolling_up_right
-
-  - platform: state
-    entity_id: !input currently_scrolling_down_right_entity
-    to: "1"
-    id: scrolling_down_right
-
 condition:
   - condition: template
     value_template: "{{ lights | count > 0 }}"
@@ -321,7 +291,9 @@ action:
 
   - choose:
       # ── Click handling (native multi_press from device firmware) ──
-      - conditions: "{{ trigger.id == 'click' }}"
+      - conditions: >-
+          {{ trigger.id == 'click' and
+             (state_attr(trigger.entity_id, 'event_type') or '').startswith('multi_press_') }}
         sequence:
           - variables:
               press_count: >-
@@ -406,10 +378,7 @@ action:
           {{ trigger.id in [
             'scroll_up_left', 'scroll_down_left',
             'scroll_up_middle', 'scroll_down_middle',
-            'scroll_up_right', 'scroll_down_right',
-            'scrolling_up_left', 'scrolling_down_left',
-            'scrolling_up_middle', 'scrolling_down_middle',
-            'scrolling_up_right', 'scrolling_down_right'
+            'scroll_up_right', 'scroll_down_right'
           ] }}
         sequence:
           - variables:
@@ -431,30 +400,31 @@ action:
                   {{ right_mode_control }}
                 {% endif %}
               scroll_state_entity: >-
-                {% if trigger.id == 'scrolling_up_left' %}
+                {% if 'left' in trigger.id and '_up_' in trigger.id %}
                   {{ currently_scrolling_up_left_entity }}
-                {% elif trigger.id == 'scrolling_down_left' %}
+                {% elif 'left' in trigger.id and '_down_' in trigger.id %}
                   {{ currently_scrolling_down_left_entity }}
-                {% elif trigger.id == 'scrolling_up_middle' %}
+                {% elif 'middle' in trigger.id and '_up_' in trigger.id %}
                   {{ currently_scrolling_up_middle_entity }}
-                {% elif trigger.id == 'scrolling_down_middle' %}
+                {% elif 'middle' in trigger.id and '_down_' in trigger.id %}
                   {{ currently_scrolling_down_middle_entity }}
-                {% elif trigger.id == 'scrolling_up_right' %}
+                {% elif 'right' in trigger.id and '_up_' in trigger.id %}
                   {{ currently_scrolling_up_right_entity }}
-                {% elif trigger.id == 'scrolling_down_right' %}
+                {% elif 'right' in trigger.id and '_down_' in trigger.id %}
                   {{ currently_scrolling_down_right_entity }}
                 {% else %}
                 {% endif %}
-              repeat_while_scrolling: "{{ trigger.id.startswith('scrolling_') and scroll_state_entity != '' }}"
 
           - repeat:
               while:
                 - condition: template
                   value_template: >-
-                    {% if repeat_while_scrolling %}
-                      {{ states(scroll_state_entity) == '1' }}
+                    {% if repeat.first %}
+                      true
+                    {% elif scroll_state_entity | trim != '' %}
+                      {{ states(scroll_state_entity | trim) == '1' }}
                     {% else %}
-                      {{ repeat.first }}
+                      false
                     {% endif %}
               sequence:
                 - choose:
@@ -508,7 +478,7 @@ action:
 
                 - if:
                     - condition: template
-                      value_template: "{{ repeat_while_scrolling }}"
+                      value_template: "{{ scroll_state_entity | trim != '' }}"
                   then:
                     - delay:
                         milliseconds: !input scroll_repeat_interval_ms
