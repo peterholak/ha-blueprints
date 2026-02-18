@@ -1,122 +1,127 @@
 blueprint:
-  name: IKEA Bilresa - 4-light mode-based controller
+  name: IKEA Bilresa - multi-light mode wheel controller (button entities)
   description: >-
-    Control up to 4 lights with one IKEA Bilresa wheel remote.
+    Control multiple lights with an IKEA Bilresa remote when exposed as per-mode entities.
+
+    Expected entity model:
+    - 3 click entities (left/middle/right)
+    - 6 scroll button entities (left/middle/right x up/down)
+    - Optional 6 "currently scrolling" entities (0/1) for hold-to-repeat behavior
 
     Behavior:
-    - Single click toggles the currently active light.
-    - Double click selects the next light.
-    - Triple click selects the previous light.
-    - When the active light changes, it blinks once (flash short).
-    - Wheel scrolling changes a parameter based on the remote mode (left/middle/right):
+    - Single click toggles the active light.
+    - Double click selects the next active light.
+    - Triple click selects the previous active light.
+    - Active-light changes blink once with flash short feedback.
+    - Scroll up/down changes a mode-assigned control:
       brightness, color temperature, scene cycling, or none.
 
-    This blueprint uses an action sensor (from your Zigbee integration) and an external
-    mode entity (sensor/select) that indicates the currently selected Bilresa mode.
+    Notes:
+    - Clicks are counted across all three click entities using a short multi-click window.
+    - If a corresponding "currently scrolling" entity is supplied, scrolling repeats while it is on.
   domain: automation
   input:
-    action_entity:
-      name: Action entity
-      description: >-
-        Entity that reports remote actions (for example via Zigbee2MQTT action sensor).
+    click_left_entity:
+      name: Left mode click entity
       selector:
-        entity:
-          domain:
-            - sensor
-            - event
-            - select
-            - text
+        entity: {}
 
-    mode_entity:
-      name: Mode entity (left/middle/right)
-      description: >-
-        Entity whose state reflects the active Bilresa mode.
+    click_middle_entity:
+      name: Middle mode click entity
       selector:
-        entity:
-          domain:
-            - sensor
-            - select
-            - input_select
+        entity: {}
 
-    mode_left_value:
-      name: Mode value for LEFT
-      default: "left"
+    click_right_entity:
+      name: Right mode click entity
       selector:
-        text:
+        entity: {}
 
-    mode_middle_value:
-      name: Mode value for MIDDLE
-      default: "middle"
+    scroll_up_left_entity:
+      name: Left mode scroll up entity
       selector:
-        text:
+        entity: {}
 
-    mode_right_value:
-      name: Mode value for RIGHT
-      default: "right"
+    scroll_down_left_entity:
+      name: Left mode scroll down entity
       selector:
-        text:
+        entity: {}
+
+    scroll_up_middle_entity:
+      name: Middle mode scroll up entity
+      selector:
+        entity: {}
+
+    scroll_down_middle_entity:
+      name: Middle mode scroll down entity
+      selector:
+        entity: {}
+
+    scroll_up_right_entity:
+      name: Right mode scroll up entity
+      selector:
+        entity: {}
+
+    scroll_down_right_entity:
+      name: Right mode scroll down entity
+      selector:
+        entity: {}
+
+    currently_scrolling_up_left_entity:
+      name: Optional currently-scrolling UP (left mode)
+      description: Optional 0/1 entity for repeated changes while scrolling.
+      default: ""
+      selector:
+        entity: {}
+
+    currently_scrolling_down_left_entity:
+      name: Optional currently-scrolling DOWN (left mode)
+      description: Optional 0/1 entity for repeated changes while scrolling.
+      default: ""
+      selector:
+        entity: {}
+
+    currently_scrolling_up_middle_entity:
+      name: Optional currently-scrolling UP (middle mode)
+      description: Optional 0/1 entity for repeated changes while scrolling.
+      default: ""
+      selector:
+        entity: {}
+
+    currently_scrolling_down_middle_entity:
+      name: Optional currently-scrolling DOWN (middle mode)
+      description: Optional 0/1 entity for repeated changes while scrolling.
+      default: ""
+      selector:
+        entity: {}
+
+    currently_scrolling_up_right_entity:
+      name: Optional currently-scrolling UP (right mode)
+      description: Optional 0/1 entity for repeated changes while scrolling.
+      default: ""
+      selector:
+        entity: {}
+
+    currently_scrolling_down_right_entity:
+      name: Optional currently-scrolling DOWN (right mode)
+      description: Optional 0/1 entity for repeated changes while scrolling.
+      default: ""
+      selector:
+        entity: {}
 
     active_light_index_helper:
       name: Active light index helper
-      description: >-
-        Input number helper storing active light index (1-4).
+      description: Input number helper storing active light index (1..number of lights).
       selector:
         entity:
           domain: input_number
 
-    light_1:
-      name: Light 1
+    lights:
+      name: Lights to control
+      description: Choose the lights to cycle through (up to 4 recommended).
       selector:
         entity:
           domain: light
-
-    light_2:
-      name: Light 2
-      selector:
-        entity:
-          domain: light
-
-    light_3:
-      name: Light 3
-      selector:
-        entity:
-          domain: light
-
-    light_4:
-      name: Light 4
-      selector:
-        entity:
-          domain: light
-
-    action_single_click:
-      name: Action value for single click
-      default: "single"
-      selector:
-        text:
-
-    action_double_click:
-      name: Action value for double click
-      default: "double"
-      selector:
-        text:
-
-    action_triple_click:
-      name: Action value for triple click
-      default: "triple"
-      selector:
-        text:
-
-    action_scroll_up:
-      name: Action value for scroll up
-      default: "scroll_up"
-      selector:
-        text:
-
-    action_scroll_down:
-      name: Action value for scroll down
-      default: "scroll_down"
-      selector:
-        text:
+          multiple: true
 
     left_mode_control:
       name: Left mode controls
@@ -173,7 +178,7 @@ blueprint:
 
     scenes:
       name: Scenes to cycle (optional)
-      description: Used if a mode is set to "scenes".
+      description: Used if a mode is set to scenes.
       default: []
       selector:
         entity:
@@ -182,153 +187,319 @@ blueprint:
 
     scene_index_helper:
       name: Scene index helper (optional)
-      description: >-
-        Input number helper storing current scene index (1..number of scenes).
-        Required if any mode uses "scenes".
+      description: Input number helper storing scene index (1..number of scenes).
       default: ""
       selector:
         entity:
           domain: input_number
 
-mode: queued
-max: 20
+    click_window_ms:
+      name: Multi-click window (ms)
+      default: 450
+      selector:
+        number:
+          min: 150
+          max: 1000
+          step: 50
+          mode: slider
+
+    scroll_repeat_interval_ms:
+      name: Scroll repeat interval (ms)
+      default: 180
+      selector:
+        number:
+          min: 50
+          max: 1000
+          step: 10
+          mode: slider
+
+mode: restart
+max_exceeded: silent
 
 variables:
-  action_entity: !input action_entity
-  mode_entity: !input mode_entity
-  mode_left_value: !input mode_left_value
-  mode_middle_value: !input mode_middle_value
-  mode_right_value: !input mode_right_value
+  click_left_entity: !input click_left_entity
+  click_middle_entity: !input click_middle_entity
+  click_right_entity: !input click_right_entity
+
+  scroll_up_left_entity: !input scroll_up_left_entity
+  scroll_down_left_entity: !input scroll_down_left_entity
+  scroll_up_middle_entity: !input scroll_up_middle_entity
+  scroll_down_middle_entity: !input scroll_down_middle_entity
+  scroll_up_right_entity: !input scroll_up_right_entity
+  scroll_down_right_entity: !input scroll_down_right_entity
+
+  currently_scrolling_up_left_entity: !input currently_scrolling_up_left_entity
+  currently_scrolling_down_left_entity: !input currently_scrolling_down_left_entity
+  currently_scrolling_up_middle_entity: !input currently_scrolling_up_middle_entity
+  currently_scrolling_down_middle_entity: !input currently_scrolling_down_middle_entity
+  currently_scrolling_up_right_entity: !input currently_scrolling_up_right_entity
+  currently_scrolling_down_right_entity: !input currently_scrolling_down_right_entity
+
   idx_helper: !input active_light_index_helper
-  lights:
-    - !input light_1
-    - !input light_2
-    - !input light_3
-    - !input light_4
-  action_single_click: !input action_single_click
-  action_double_click: !input action_double_click
-  action_triple_click: !input action_triple_click
-  action_scroll_up: !input action_scroll_up
-  action_scroll_down: !input action_scroll_down
+  lights: !input lights
+
   left_mode_control: !input left_mode_control
   middle_mode_control: !input middle_mode_control
   right_mode_control: !input right_mode_control
+
   brightness_step_pct: !input brightness_step_pct
   color_temp_step_kelvin: !input color_temp_step_kelvin
+
   scenes: !input scenes
   scene_idx_helper: !input scene_index_helper
 
+  click_window_ms: !input click_window_ms
+  scroll_repeat_interval_ms: !input scroll_repeat_interval_ms
+
 trigger:
   - platform: state
-    entity_id: !input action_entity
+    entity_id: !input click_left_entity
+    id: click
+
+  - platform: state
+    entity_id: !input click_middle_entity
+    id: click
+
+  - platform: state
+    entity_id: !input click_right_entity
+    id: click
+
+  - platform: state
+    entity_id: !input scroll_up_left_entity
+    id: scroll_up_left
+
+  - platform: state
+    entity_id: !input scroll_down_left_entity
+    id: scroll_down_left
+
+  - platform: state
+    entity_id: !input scroll_up_middle_entity
+    id: scroll_up_middle
+
+  - platform: state
+    entity_id: !input scroll_down_middle_entity
+    id: scroll_down_middle
+
+  - platform: state
+    entity_id: !input scroll_up_right_entity
+    id: scroll_up_right
+
+  - platform: state
+    entity_id: !input scroll_down_right_entity
+    id: scroll_down_right
+
+  - platform: state
+    entity_id: !input currently_scrolling_up_left_entity
+    to: "1"
+    id: scrolling_up_left
+
+  - platform: state
+    entity_id: !input currently_scrolling_down_left_entity
+    to: "1"
+    id: scrolling_down_left
+
+  - platform: state
+    entity_id: !input currently_scrolling_up_middle_entity
+    to: "1"
+    id: scrolling_up_middle
+
+  - platform: state
+    entity_id: !input currently_scrolling_down_middle_entity
+    to: "1"
+    id: scrolling_down_middle
+
+  - platform: state
+    entity_id: !input currently_scrolling_up_right_entity
+    to: "1"
+    id: scrolling_up_right
+
+  - platform: state
+    entity_id: !input currently_scrolling_down_right_entity
+    to: "1"
+    id: scrolling_down_right
 
 condition:
   - condition: template
-    value_template: "{{ trigger.to_state is not none and trigger.to_state.state not in ['unknown', 'unavailable', ''] }}"
+    value_template: "{{ lights | count > 0 }}"
 
 action:
   - variables:
-      action_value: "{{ trigger.to_state.state }}"
-      mode_value: "{{ states(mode_entity) }}"
+      light_count: "{{ lights | count }}"
       raw_idx: "{{ states(idx_helper) | int(1) }}"
-      clamped_idx: "{{ [1, [raw_idx, lights | count] | min] | max }}"
+      clamped_idx: "{{ [1, [raw_idx, light_count] | min] | max }}"
       active_light: "{{ lights[clamped_idx - 1] }}"
-      active_control: >-
-        {% if mode_value == mode_left_value %}
-          {{ left_mode_control }}
-        {% elif mode_value == mode_middle_value %}
-          {{ middle_mode_control }}
-        {% elif mode_value == mode_right_value %}
-          {{ right_mode_control }}
-        {% else %}
-          none
-        {% endif %}
       scene_count: "{{ scenes | count }}"
 
   - choose:
-      - conditions: "{{ action_value == action_single_click }}"
-        sequence:
-          - service: homeassistant.toggle
-            target:
-              entity_id: "{{ active_light }}"
-
-      - conditions: "{{ action_value == action_double_click }}"
+      - conditions: "{{ trigger.id == 'click' }}"
         sequence:
           - variables:
-              next_idx: "{{ (clamped_idx % (lights | count)) + 1 }}"
-          - service: input_number.set_value
-            target:
-              entity_id: !input active_light_index_helper
-            data:
-              value: "{{ next_idx }}"
-          - service: light.turn_on
-            target:
-              entity_id: "{{ lights[next_idx - 1] }}"
-            data:
-              flash: short
+              click_count: 1
 
-      - conditions: "{{ action_value == action_triple_click }}"
-        sequence:
-          - variables:
-              prev_idx: "{{ ((clamped_idx - 2) % (lights | count)) + 1 }}"
-          - service: input_number.set_value
-            target:
-              entity_id: !input active_light_index_helper
-            data:
-              value: "{{ prev_idx }}"
-          - service: light.turn_on
-            target:
-              entity_id: "{{ lights[prev_idx - 1] }}"
-            data:
-              flash: short
+          - repeat:
+              count: 2
+              sequence:
+                - wait_for_trigger:
+                    - platform: state
+                      entity_id: !input click_left_entity
+                    - platform: state
+                      entity_id: !input click_middle_entity
+                    - platform: state
+                      entity_id: !input click_right_entity
+                  timeout:
+                    milliseconds: !input click_window_ms
+                  continue_on_timeout: true
+                - choose:
+                    - conditions: "{{ wait.trigger is not none }}"
+                      sequence:
+                        - variables:
+                            click_count: "{{ click_count + 1 }}"
 
-      - conditions: "{{ action_value in [action_scroll_up, action_scroll_down] }}"
-        sequence:
           - choose:
-              - conditions: "{{ active_control == 'brightness' }}"
+              - conditions: "{{ click_count == 1 }}"
                 sequence:
-                  - service: light.turn_on
+                  - service: homeassistant.toggle
                     target:
                       entity_id: "{{ active_light }}"
-                    data:
-                      brightness_step_pct: >-
-                        {% if action_value == action_scroll_up %}
-                          {{ brightness_step_pct }}
-                        {% else %}
-                          {{ -1 * brightness_step_pct }}
-                        {% endif %}
 
-              - conditions: "{{ active_control == 'color_temp' }}"
+              - conditions: "{{ click_count == 2 }}"
                 sequence:
                   - variables:
-                      current_kelvin: "{{ state_attr(active_light, 'color_temp_kelvin') | int(3500) }}"
-                      min_kelvin: "{{ state_attr(active_light, 'min_color_temp_kelvin') | int(2000) }}"
-                      max_kelvin: "{{ state_attr(active_light, 'max_color_temp_kelvin') | int(6500) }}"
-                      direction: "{{ 1 if action_value == action_scroll_up else -1 }}"
-                      candidate_kelvin: "{{ current_kelvin + (direction * color_temp_step_kelvin) }}"
-                      next_kelvin: "{{ [min_kelvin, [candidate_kelvin, max_kelvin] | min] | max }}"
-                  - service: light.turn_on
-                    target:
-                      entity_id: "{{ active_light }}"
-                    data:
-                      color_temp_kelvin: "{{ next_kelvin }}"
-
-              - conditions: "{{ active_control == 'scenes' and scene_count > 0 and scene_idx_helper != '' }}"
-                sequence:
-                  - variables:
-                      raw_scene_idx: "{{ states(scene_idx_helper) | int(1) }}"
-                      clamped_scene_idx: "{{ [1, [raw_scene_idx, scene_count] | min] | max }}"
-                      next_scene_idx: >-
-                        {% if action_value == action_scroll_up %}
-                          {{ (clamped_scene_idx % scene_count) + 1 }}
-                        {% else %}
-                          {{ ((clamped_scene_idx - 2) % scene_count) + 1 }}
-                        {% endif %}
+                      next_idx: "{{ (clamped_idx % light_count) + 1 }}"
                   - service: input_number.set_value
                     target:
-                      entity_id: !input scene_index_helper
+                      entity_id: !input active_light_index_helper
                     data:
-                      value: "{{ next_scene_idx }}"
-                  - service: scene.turn_on
+                      value: "{{ next_idx }}"
+                  - service: light.turn_on
                     target:
-                      entity_id: "{{ scenes[next_scene_idx - 1] }}"
+                      entity_id: "{{ lights[next_idx - 1] }}"
+                    data:
+                      flash: short
+
+              - conditions: "{{ click_count >= 3 }}"
+                sequence:
+                  - variables:
+                      prev_idx: "{{ ((clamped_idx - 2) % light_count) + 1 }}"
+                  - service: input_number.set_value
+                    target:
+                      entity_id: !input active_light_index_helper
+                    data:
+                      value: "{{ prev_idx }}"
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ lights[prev_idx - 1] }}"
+                    data:
+                      flash: short
+
+      - conditions: >-
+          {{ trigger.id in [
+            'scroll_up_left', 'scroll_down_left',
+            'scroll_up_middle', 'scroll_down_middle',
+            'scroll_up_right', 'scroll_down_right',
+            'scrolling_up_left', 'scrolling_down_left',
+            'scrolling_up_middle', 'scrolling_down_middle',
+            'scrolling_up_right', 'scrolling_down_right'
+          ] }}
+        sequence:
+          - variables:
+              mode_name: >-
+                {% if 'left' in trigger.id %}
+                  left
+                {% elif 'middle' in trigger.id %}
+                  middle
+                {% else %}
+                  right
+                {% endif %}
+              direction: "{{ 'up' if '_up_' in trigger.id or trigger.id.endswith('_up_left') or trigger.id.endswith('_up_middle') or trigger.id.endswith('_up_right') else 'down' }}"
+              active_control: >-
+                {% if mode_name == 'left' %}
+                  {{ left_mode_control }}
+                {% elif mode_name == 'middle' %}
+                  {{ middle_mode_control }}
+                {% else %}
+                  {{ right_mode_control }}
+                {% endif %}
+              scroll_state_entity: >-
+                {% if trigger.id == 'scrolling_up_left' %}
+                  {{ currently_scrolling_up_left_entity }}
+                {% elif trigger.id == 'scrolling_down_left' %}
+                  {{ currently_scrolling_down_left_entity }}
+                {% elif trigger.id == 'scrolling_up_middle' %}
+                  {{ currently_scrolling_up_middle_entity }}
+                {% elif trigger.id == 'scrolling_down_middle' %}
+                  {{ currently_scrolling_down_middle_entity }}
+                {% elif trigger.id == 'scrolling_up_right' %}
+                  {{ currently_scrolling_up_right_entity }}
+                {% elif trigger.id == 'scrolling_down_right' %}
+                  {{ currently_scrolling_down_right_entity }}
+                {% else %}
+                  
+                {% endif %}
+              repeat_while_scrolling: "{{ trigger.id.startswith('scrolling_') and scroll_state_entity != '' }}"
+
+          - repeat:
+              while:
+                - condition: template
+                  value_template: >-
+                    {% if repeat_while_scrolling %}
+                      {{ states(scroll_state_entity) == '1' }}
+                    {% else %}
+                      {{ repeat.first }}
+                    {% endif %}
+              sequence:
+                - choose:
+                    - conditions: "{{ active_control == 'brightness' }}"
+                      sequence:
+                        - service: light.turn_on
+                          target:
+                            entity_id: "{{ active_light }}"
+                          data:
+                            brightness_step_pct: >-
+                              {% if direction == 'up' %}
+                                {{ brightness_step_pct }}
+                              {% else %}
+                                {{ -1 * brightness_step_pct }}
+                              {% endif %}
+
+                    - conditions: "{{ active_control == 'color_temp' }}"
+                      sequence:
+                        - variables:
+                            current_kelvin: "{{ state_attr(active_light, 'color_temp_kelvin') | int(3500) }}"
+                            min_kelvin: "{{ state_attr(active_light, 'min_color_temp_kelvin') | int(2000) }}"
+                            max_kelvin: "{{ state_attr(active_light, 'max_color_temp_kelvin') | int(6500) }}"
+                            delta: "{{ color_temp_step_kelvin if direction == 'up' else (-1 * color_temp_step_kelvin) }}"
+                            candidate_kelvin: "{{ current_kelvin + delta }}"
+                            next_kelvin: "{{ [min_kelvin, [candidate_kelvin, max_kelvin] | min] | max }}"
+                        - service: light.turn_on
+                          target:
+                            entity_id: "{{ active_light }}"
+                          data:
+                            color_temp_kelvin: "{{ next_kelvin }}"
+
+                    - conditions: "{{ active_control == 'scenes' and scene_count > 0 and scene_idx_helper != '' }}"
+                      sequence:
+                        - variables:
+                            raw_scene_idx: "{{ states(scene_idx_helper) | int(1) }}"
+                            clamped_scene_idx: "{{ [1, [raw_scene_idx, scene_count] | min] | max }}"
+                            next_scene_idx: >-
+                              {% if direction == 'up' %}
+                                {{ (clamped_scene_idx % scene_count) + 1 }}
+                              {% else %}
+                                {{ ((clamped_scene_idx - 2) % scene_count) + 1 }}
+                              {% endif %}
+                        - service: input_number.set_value
+                          target:
+                            entity_id: !input scene_index_helper
+                          data:
+                            value: "{{ next_scene_idx }}"
+                        - service: scene.turn_on
+                          target:
+                            entity_id: "{{ scenes[next_scene_idx - 1] }}"
+
+                - if:
+                    - condition: template
+                      value_template: "{{ repeat_while_scrolling }}"
+                  then:
+                    - delay:
+                        milliseconds: !input scroll_repeat_interval_ms
