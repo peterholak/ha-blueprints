@@ -333,64 +333,66 @@ action:
   - choose:
       - conditions: "{{ trigger.id == 'click' }}"
         sequence:
-          - variables:
-              click_count: 1
-
-          - repeat:
-              count: 2
-              sequence:
-                - wait_for_trigger:
-                    - platform: state
-                      entity_id: !input click_left_entity
-                    - platform: state
-                      entity_id: !input click_middle_entity
-                    - platform: state
-                      entity_id: !input click_right_entity
-                  timeout:
-                    milliseconds: !input click_window_ms
-                  continue_on_timeout: true
-                - choose:
-                    - conditions: "{{ wait.trigger is not none }}"
-                      sequence:
-                        - variables:
-                            click_count: "{{ click_count + 1 }}"
+          - wait_for_trigger:
+              - platform: state
+                entity_id: !input click_left_entity
+              - platform: state
+                entity_id: !input click_middle_entity
+              - platform: state
+                entity_id: !input click_right_entity
+            timeout:
+              milliseconds: !input click_window_ms
+            continue_on_timeout: true
 
           - choose:
-              - conditions: "{{ click_count == 1 }}"
+              - conditions: "{{ wait.trigger is none }}"
                 sequence:
                   - service: homeassistant.toggle
                     target:
                       entity_id: "{{ active_light }}"
 
-              - conditions: "{{ click_count == 2 }}"
-                sequence:
-                  - variables:
-                      next_idx: "{{ (clamped_idx % light_count) + 1 }}"
-                  - service: input_number.set_value
-                    target:
-                      entity_id: !input active_light_index_helper
-                    data:
-                      value: "{{ next_idx }}"
-                  - service: light.turn_on
-                    target:
-                      entity_id: "{{ lights[next_idx - 1] }}"
-                    data:
-                      flash: short
+            default:
+              - wait_for_trigger:
+                  - platform: state
+                    entity_id: !input click_left_entity
+                  - platform: state
+                    entity_id: !input click_middle_entity
+                  - platform: state
+                    entity_id: !input click_right_entity
+                timeout:
+                  milliseconds: !input click_window_ms
+                continue_on_timeout: true
 
-              - conditions: "{{ click_count >= 3 }}"
-                sequence:
-                  - variables:
-                      prev_idx: "{{ ((clamped_idx - 2) % light_count) + 1 }}"
-                  - service: input_number.set_value
-                    target:
-                      entity_id: !input active_light_index_helper
-                    data:
-                      value: "{{ prev_idx }}"
-                  - service: light.turn_on
-                    target:
-                      entity_id: "{{ lights[prev_idx - 1] }}"
-                    data:
-                      flash: short
+              - choose:
+                  - conditions: "{{ wait.trigger is none }}"
+                    sequence:
+                      - variables:
+                          next_idx: "{{ (clamped_idx % light_count) + 1 }}"
+                      - service: input_number.set_value
+                        target:
+                          entity_id: !input active_light_index_helper
+                        data:
+                          value: "{{ next_idx }}"
+                      - service: light.turn_on
+                        target:
+                          entity_id: "{{ lights[next_idx - 1] }}"
+                        data:
+                          flash: short
+
+                  - conditions: "{{ wait.trigger is not none }}"
+                    sequence:
+                      - variables:
+                          prev_idx: "{{ ((clamped_idx - 2) % light_count) + 1 }}"
+                      - service: input_number.set_value
+                        target:
+                          entity_id: !input active_light_index_helper
+                        data:
+                          value: "{{ prev_idx }}"
+                      - service: light.turn_on
+                        target:
+                          entity_id: "{{ lights[prev_idx - 1] }}"
+                        data:
+                          flash: short
 
       - conditions: >-
           {{ trigger.id in [
