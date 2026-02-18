@@ -206,6 +206,14 @@ blueprint:
 mode: restart
 max_exceeded: silent
 
+trigger_variables:
+  tv_scrolling_up_left: !input currently_scrolling_up_left_entity
+  tv_scrolling_down_left: !input currently_scrolling_down_left_entity
+  tv_scrolling_up_middle: !input currently_scrolling_up_middle_entity
+  tv_scrolling_down_middle: !input currently_scrolling_down_middle_entity
+  tv_scrolling_up_right: !input currently_scrolling_up_right_entity
+  tv_scrolling_down_right: !input currently_scrolling_down_right_entity
+
 variables:
   click_left_entity: !input click_left_entity
   click_middle_entity: !input click_middle_entity
@@ -276,6 +284,30 @@ trigger:
   - platform: state
     entity_id: !input scroll_down_right_entity
     id: scroll_down_right
+
+  - platform: template
+    value_template: "{{ tv_scrolling_up_left != '' and states(tv_scrolling_up_left) == '1' }}"
+    id: scrolling_up_left
+
+  - platform: template
+    value_template: "{{ tv_scrolling_down_left != '' and states(tv_scrolling_down_left) == '1' }}"
+    id: scrolling_down_left
+
+  - platform: template
+    value_template: "{{ tv_scrolling_up_middle != '' and states(tv_scrolling_up_middle) == '1' }}"
+    id: scrolling_up_middle
+
+  - platform: template
+    value_template: "{{ tv_scrolling_down_middle != '' and states(tv_scrolling_down_middle) == '1' }}"
+    id: scrolling_down_middle
+
+  - platform: template
+    value_template: "{{ tv_scrolling_up_right != '' and states(tv_scrolling_up_right) == '1' }}"
+    id: scrolling_up_right
+
+  - platform: template
+    value_template: "{{ tv_scrolling_down_right != '' and states(tv_scrolling_down_right) == '1' }}"
+    id: scrolling_down_right
 
 condition:
   - condition: template
@@ -378,7 +410,10 @@ action:
           {{ trigger.id in [
             'scroll_up_left', 'scroll_down_left',
             'scroll_up_middle', 'scroll_down_middle',
-            'scroll_up_right', 'scroll_down_right'
+            'scroll_up_right', 'scroll_down_right',
+            'scrolling_up_left', 'scrolling_down_left',
+            'scrolling_up_middle', 'scrolling_down_middle',
+            'scrolling_up_right', 'scrolling_down_right'
           ] }}
         sequence:
           - variables:
@@ -406,17 +441,16 @@ action:
                     'right': {'up': currently_scrolling_up_right_entity, 'down': currently_scrolling_down_right_entity}
                   } -%}
                 {{ mapping.get(mode_name | trim, {}).get(direction | trim, '') }}
+              repeat_while_scrolling: "{{ trigger.id.startswith('scrolling_') and scroll_state_entity | trim != '' }}"
 
           - repeat:
               while:
                 - condition: template
                   value_template: >-
-                    {% if repeat.first %}
-                      true
-                    {% elif scroll_state_entity | trim != '' %}
+                    {% if repeat_while_scrolling %}
                       {{ states(scroll_state_entity | trim) == '1' }}
                     {% else %}
-                      false
+                      {{ repeat.first }}
                     {% endif %}
               sequence:
                 - choose:
@@ -470,9 +504,7 @@ action:
 
                 - if:
                     - condition: template
-                      value_template: >-
-                        {{ scroll_state_entity | trim != '' and
-                           states(scroll_state_entity | trim) == '1' }}
+                      value_template: "{{ repeat_while_scrolling }}"
                   then:
                     - delay:
                         milliseconds: !input scroll_repeat_interval_ms
