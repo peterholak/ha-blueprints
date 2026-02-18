@@ -1,0 +1,334 @@
+blueprint:
+  name: IKEA Bilresa - 4-light mode-based controller
+  description: >-
+    Control up to 4 lights with one IKEA Bilresa wheel remote.
+
+    Behavior:
+    - Single click toggles the currently active light.
+    - Double click selects the next light.
+    - Triple click selects the previous light.
+    - When the active light changes, it blinks once (flash short).
+    - Wheel scrolling changes a parameter based on the remote mode (left/middle/right):
+      brightness, color temperature, scene cycling, or none.
+
+    This blueprint uses an action sensor (from your Zigbee integration) and an external
+    mode entity (sensor/select) that indicates the currently selected Bilresa mode.
+  domain: automation
+  input:
+    action_entity:
+      name: Action entity
+      description: >-
+        Entity that reports remote actions (for example via Zigbee2MQTT action sensor).
+      selector:
+        entity:
+          domain:
+            - sensor
+            - event
+            - select
+            - text
+
+    mode_entity:
+      name: Mode entity (left/middle/right)
+      description: >-
+        Entity whose state reflects the active Bilresa mode.
+      selector:
+        entity:
+          domain:
+            - sensor
+            - select
+            - input_select
+
+    mode_left_value:
+      name: Mode value for LEFT
+      default: "left"
+      selector:
+        text:
+
+    mode_middle_value:
+      name: Mode value for MIDDLE
+      default: "middle"
+      selector:
+        text:
+
+    mode_right_value:
+      name: Mode value for RIGHT
+      default: "right"
+      selector:
+        text:
+
+    active_light_index_helper:
+      name: Active light index helper
+      description: >-
+        Input number helper storing active light index (1-4).
+      selector:
+        entity:
+          domain: input_number
+
+    light_1:
+      name: Light 1
+      selector:
+        entity:
+          domain: light
+
+    light_2:
+      name: Light 2
+      selector:
+        entity:
+          domain: light
+
+    light_3:
+      name: Light 3
+      selector:
+        entity:
+          domain: light
+
+    light_4:
+      name: Light 4
+      selector:
+        entity:
+          domain: light
+
+    action_single_click:
+      name: Action value for single click
+      default: "single"
+      selector:
+        text:
+
+    action_double_click:
+      name: Action value for double click
+      default: "double"
+      selector:
+        text:
+
+    action_triple_click:
+      name: Action value for triple click
+      default: "triple"
+      selector:
+        text:
+
+    action_scroll_up:
+      name: Action value for scroll up
+      default: "scroll_up"
+      selector:
+        text:
+
+    action_scroll_down:
+      name: Action value for scroll down
+      default: "scroll_down"
+      selector:
+        text:
+
+    left_mode_control:
+      name: Left mode controls
+      default: brightness
+      selector:
+        select:
+          options:
+            - brightness
+            - color_temp
+            - scenes
+            - none
+
+    middle_mode_control:
+      name: Middle mode controls
+      default: color_temp
+      selector:
+        select:
+          options:
+            - brightness
+            - color_temp
+            - scenes
+            - none
+
+    right_mode_control:
+      name: Right mode controls
+      default: scenes
+      selector:
+        select:
+          options:
+            - brightness
+            - color_temp
+            - scenes
+            - none
+
+    brightness_step_pct:
+      name: Brightness step (%)
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: slider
+          step: 1
+
+    color_temp_step_kelvin:
+      name: Color temperature step (kelvin)
+      default: 250
+      selector:
+        number:
+          min: 50
+          max: 2000
+          mode: slider
+          step: 50
+
+    scenes:
+      name: Scenes to cycle (optional)
+      description: Used if a mode is set to "scenes".
+      default: []
+      selector:
+        entity:
+          domain: scene
+          multiple: true
+
+    scene_index_helper:
+      name: Scene index helper (optional)
+      description: >-
+        Input number helper storing current scene index (1..number of scenes).
+        Required if any mode uses "scenes".
+      default: ""
+      selector:
+        entity:
+          domain: input_number
+
+mode: queued
+max: 20
+
+variables:
+  action_entity: !input action_entity
+  mode_entity: !input mode_entity
+  mode_left_value: !input mode_left_value
+  mode_middle_value: !input mode_middle_value
+  mode_right_value: !input mode_right_value
+  idx_helper: !input active_light_index_helper
+  lights:
+    - !input light_1
+    - !input light_2
+    - !input light_3
+    - !input light_4
+  action_single_click: !input action_single_click
+  action_double_click: !input action_double_click
+  action_triple_click: !input action_triple_click
+  action_scroll_up: !input action_scroll_up
+  action_scroll_down: !input action_scroll_down
+  left_mode_control: !input left_mode_control
+  middle_mode_control: !input middle_mode_control
+  right_mode_control: !input right_mode_control
+  brightness_step_pct: !input brightness_step_pct
+  color_temp_step_kelvin: !input color_temp_step_kelvin
+  scenes: !input scenes
+  scene_idx_helper: !input scene_index_helper
+
+trigger:
+  - platform: state
+    entity_id: !input action_entity
+
+condition:
+  - condition: template
+    value_template: "{{ trigger.to_state is not none and trigger.to_state.state not in ['unknown', 'unavailable', ''] }}"
+
+action:
+  - variables:
+      action_value: "{{ trigger.to_state.state }}"
+      mode_value: "{{ states(mode_entity) }}"
+      raw_idx: "{{ states(idx_helper) | int(1) }}"
+      clamped_idx: "{{ [1, [raw_idx, lights | count] | min] | max }}"
+      active_light: "{{ lights[clamped_idx - 1] }}"
+      active_control: >-
+        {% if mode_value == mode_left_value %}
+          {{ left_mode_control }}
+        {% elif mode_value == mode_middle_value %}
+          {{ middle_mode_control }}
+        {% elif mode_value == mode_right_value %}
+          {{ right_mode_control }}
+        {% else %}
+          none
+        {% endif %}
+      scene_count: "{{ scenes | count }}"
+
+  - choose:
+      - conditions: "{{ action_value == action_single_click }}"
+        sequence:
+          - service: homeassistant.toggle
+            target:
+              entity_id: "{{ active_light }}"
+
+      - conditions: "{{ action_value == action_double_click }}"
+        sequence:
+          - variables:
+              next_idx: "{{ (clamped_idx % (lights | count)) + 1 }}"
+          - service: input_number.set_value
+            target:
+              entity_id: !input active_light_index_helper
+            data:
+              value: "{{ next_idx }}"
+          - service: light.turn_on
+            target:
+              entity_id: "{{ lights[next_idx - 1] }}"
+            data:
+              flash: short
+
+      - conditions: "{{ action_value == action_triple_click }}"
+        sequence:
+          - variables:
+              prev_idx: "{{ ((clamped_idx - 2) % (lights | count)) + 1 }}"
+          - service: input_number.set_value
+            target:
+              entity_id: !input active_light_index_helper
+            data:
+              value: "{{ prev_idx }}"
+          - service: light.turn_on
+            target:
+              entity_id: "{{ lights[prev_idx - 1] }}"
+            data:
+              flash: short
+
+      - conditions: "{{ action_value in [action_scroll_up, action_scroll_down] }}"
+        sequence:
+          - choose:
+              - conditions: "{{ active_control == 'brightness' }}"
+                sequence:
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ active_light }}"
+                    data:
+                      brightness_step_pct: >-
+                        {% if action_value == action_scroll_up %}
+                          {{ brightness_step_pct }}
+                        {% else %}
+                          {{ -1 * brightness_step_pct }}
+                        {% endif %}
+
+              - conditions: "{{ active_control == 'color_temp' }}"
+                sequence:
+                  - variables:
+                      current_kelvin: "{{ state_attr(active_light, 'color_temp_kelvin') | int(3500) }}"
+                      min_kelvin: "{{ state_attr(active_light, 'min_color_temp_kelvin') | int(2000) }}"
+                      max_kelvin: "{{ state_attr(active_light, 'max_color_temp_kelvin') | int(6500) }}"
+                      direction: "{{ 1 if action_value == action_scroll_up else -1 }}"
+                      candidate_kelvin: "{{ current_kelvin + (direction * color_temp_step_kelvin) }}"
+                      next_kelvin: "{{ [min_kelvin, [candidate_kelvin, max_kelvin] | min] | max }}"
+                  - service: light.turn_on
+                    target:
+                      entity_id: "{{ active_light }}"
+                    data:
+                      color_temp_kelvin: "{{ next_kelvin }}"
+
+              - conditions: "{{ active_control == 'scenes' and scene_count > 0 and scene_idx_helper != '' }}"
+                sequence:
+                  - variables:
+                      raw_scene_idx: "{{ states(scene_idx_helper) | int(1) }}"
+                      clamped_scene_idx: "{{ [1, [raw_scene_idx, scene_count] | min] | max }}"
+                      next_scene_idx: >-
+                        {% if action_value == action_scroll_up %}
+                          {{ (clamped_scene_idx % scene_count) + 1 }}
+                        {% else %}
+                          {{ ((clamped_scene_idx - 2) % scene_count) + 1 }}
+                        {% endif %}
+                  - service: input_number.set_value
+                    target:
+                      entity_id: !input scene_index_helper
+                    data:
+                      value: "{{ next_scene_idx }}"
+                  - service: scene.turn_on
+                    target:
+                      entity_id: "{{ scenes[next_scene_idx - 1] }}"
