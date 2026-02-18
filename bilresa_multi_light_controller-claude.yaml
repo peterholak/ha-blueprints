@@ -339,31 +339,67 @@ action:
                 sequence:
                   - variables:
                       next_idx: "{{ (clamped_idx % light_count) + 1 }}"
+                      blink_light: "{{ lights[(clamped_idx % light_count)] }}"
+                      blink_was_on: "{{ is_state(lights[(clamped_idx % light_count)], 'on') }}"
                   - service: input_number.set_value
                     target:
                       entity_id: !input active_light_index_helper
                     data:
                       value: "{{ next_idx }}"
-                  - service: light.turn_on
-                    target:
-                      entity_id: "{{ lights[next_idx - 1] }}"
-                    data:
-                      flash: short
+                  # Blink: toggle to opposite state, wait, toggle back
+                  - choose:
+                      - conditions: "{{ blink_was_on }}"
+                        sequence:
+                          - service: light.turn_off
+                            target:
+                              entity_id: "{{ blink_light }}"
+                          - delay:
+                              milliseconds: 400
+                          - service: light.turn_on
+                            target:
+                              entity_id: "{{ blink_light }}"
+                    default:
+                      - service: light.turn_on
+                        target:
+                          entity_id: "{{ blink_light }}"
+                      - delay:
+                          milliseconds: 400
+                      - service: light.turn_off
+                        target:
+                          entity_id: "{{ blink_light }}"
 
               - conditions: "{{ press_count >= 3 }}"
                 sequence:
                   - variables:
                       prev_idx: "{{ ((clamped_idx - 2) % light_count) + 1 }}"
+                      blink_light: "{{ lights[((clamped_idx - 2) % light_count)] }}"
+                      blink_was_on: "{{ is_state(lights[((clamped_idx - 2) % light_count)], 'on') }}"
                   - service: input_number.set_value
                     target:
                       entity_id: !input active_light_index_helper
                     data:
                       value: "{{ prev_idx }}"
-                  - service: light.turn_on
-                    target:
-                      entity_id: "{{ lights[prev_idx - 1] }}"
-                    data:
-                      flash: short
+                  # Blink: toggle to opposite state, wait, toggle back
+                  - choose:
+                      - conditions: "{{ blink_was_on }}"
+                        sequence:
+                          - service: light.turn_off
+                            target:
+                              entity_id: "{{ blink_light }}"
+                          - delay:
+                              milliseconds: 400
+                          - service: light.turn_on
+                            target:
+                              entity_id: "{{ blink_light }}"
+                    default:
+                      - service: light.turn_on
+                        target:
+                          entity_id: "{{ blink_light }}"
+                      - delay:
+                          milliseconds: 400
+                      - service: light.turn_off
+                        target:
+                          entity_id: "{{ blink_light }}"
 
       # ── Scroll handling ──
       - conditions: >-
