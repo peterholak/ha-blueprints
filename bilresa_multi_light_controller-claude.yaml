@@ -405,7 +405,7 @@ action:
                     'middle': {'up': currently_scrolling_up_middle_entity, 'down': currently_scrolling_down_middle_entity},
                     'right': {'up': currently_scrolling_up_right_entity, 'down': currently_scrolling_down_right_entity}
                   } -%}
-                {{ mapping.get(mode_name, {}).get(direction, '') }}
+                {{ mapping.get(mode_name | trim, {}).get(direction | trim, '') }}
 
           - repeat:
               while:
@@ -470,7 +470,9 @@ action:
 
                 - if:
                     - condition: template
-                      value_template: "{{ scroll_state_entity | trim != '' }}"
+                      value_template: >-
+                        {{ scroll_state_entity | trim != '' and
+                           states(scroll_state_entity | trim) == '1' }}
                   then:
                     - delay:
                         milliseconds: !input scroll_repeat_interval_ms
