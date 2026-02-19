@@ -5,20 +5,19 @@ blueprint:
 
     Expected entity model:
     - 3 click entities (left/middle/right) — event entities with native multi_press support
-    - 6 scroll button entities (left/middle/right x up/down)
-    - Optional 6 "currently scrolling" entities (0/1) for hold-to-repeat behavior
+    - 6 "currently scrolling" entities (0/1) for continuous scroll-wheel tracking
 
     Behavior:
     - Single click toggles the active light.
     - Double click selects the next active light.
     - Triple click selects the previous active light.
     - Active-light changes blink once with flash short feedback.
-    - Scroll up/down changes a mode-assigned control:
+    - Scroll wheel changes a mode-assigned control:
       brightness, color temperature, scene cycling, or none.
 
     Notes:
     - Click counting is handled natively by the device firmware (multi_press_1/2/3).
-    - If a corresponding "currently scrolling" entity is supplied, scrolling repeats while it is on.
+    - Scrolling uses the "currently scrolling" entities and repeats at a configurable interval while the entity is on.
   domain: automation
   input:
     click_left_entity:
@@ -36,74 +35,44 @@ blueprint:
       selector:
         entity: {}
 
-    scroll_up_left_entity:
-      name: Left mode scroll up entity
-      selector:
-        entity: {}
-
-    scroll_down_left_entity:
-      name: Left mode scroll down entity
-      selector:
-        entity: {}
-
-    scroll_up_middle_entity:
-      name: Middle mode scroll up entity
-      selector:
-        entity: {}
-
-    scroll_down_middle_entity:
-      name: Middle mode scroll down entity
-      selector:
-        entity: {}
-
-    scroll_up_right_entity:
-      name: Right mode scroll up entity
-      selector:
-        entity: {}
-
-    scroll_down_right_entity:
-      name: Right mode scroll down entity
-      selector:
-        entity: {}
-
     currently_scrolling_up_left_entity:
-      name: Optional currently-scrolling UP (left mode)
-      description: Optional 0/1 entity for repeated changes while scrolling.
+      name: Currently-scrolling UP (left mode)
+      description: Entity that is "1" while the wheel is scrolled up in left mode.
       default: ""
       selector:
         entity: {}
 
     currently_scrolling_down_left_entity:
-      name: Optional currently-scrolling DOWN (left mode)
-      description: Optional 0/1 entity for repeated changes while scrolling.
+      name: Currently-scrolling DOWN (left mode)
+      description: Entity that is "1" while the wheel is scrolled down in left mode.
       default: ""
       selector:
         entity: {}
 
     currently_scrolling_up_middle_entity:
-      name: Optional currently-scrolling UP (middle mode)
-      description: Optional 0/1 entity for repeated changes while scrolling.
+      name: Currently-scrolling UP (middle mode)
+      description: Entity that is "1" while the wheel is scrolled up in middle mode.
       default: ""
       selector:
         entity: {}
 
     currently_scrolling_down_middle_entity:
-      name: Optional currently-scrolling DOWN (middle mode)
-      description: Optional 0/1 entity for repeated changes while scrolling.
+      name: Currently-scrolling DOWN (middle mode)
+      description: Entity that is "1" while the wheel is scrolled down in middle mode.
       default: ""
       selector:
         entity: {}
 
     currently_scrolling_up_right_entity:
-      name: Optional currently-scrolling UP (right mode)
-      description: Optional 0/1 entity for repeated changes while scrolling.
+      name: Currently-scrolling UP (right mode)
+      description: Entity that is "1" while the wheel is scrolled up in right mode.
       default: ""
       selector:
         entity: {}
 
     currently_scrolling_down_right_entity:
-      name: Optional currently-scrolling DOWN (right mode)
-      description: Optional 0/1 entity for repeated changes while scrolling.
+      name: Currently-scrolling DOWN (right mode)
+      description: Entity that is "1" while the wheel is scrolled down in right mode.
       default: ""
       selector:
         entity: {}
@@ -206,17 +175,18 @@ blueprint:
 mode: restart
 max_exceeded: silent
 
+trigger_variables:
+  tv_scrolling_up_left: !input currently_scrolling_up_left_entity
+  tv_scrolling_down_left: !input currently_scrolling_down_left_entity
+  tv_scrolling_up_middle: !input currently_scrolling_up_middle_entity
+  tv_scrolling_down_middle: !input currently_scrolling_down_middle_entity
+  tv_scrolling_up_right: !input currently_scrolling_up_right_entity
+  tv_scrolling_down_right: !input currently_scrolling_down_right_entity
+
 variables:
   click_left_entity: !input click_left_entity
   click_middle_entity: !input click_middle_entity
   click_right_entity: !input click_right_entity
-
-  scroll_up_left_entity: !input scroll_up_left_entity
-  scroll_down_left_entity: !input scroll_down_left_entity
-  scroll_up_middle_entity: !input scroll_up_middle_entity
-  scroll_down_middle_entity: !input scroll_down_middle_entity
-  scroll_up_right_entity: !input scroll_up_right_entity
-  scroll_down_right_entity: !input scroll_down_right_entity
 
   currently_scrolling_up_left_entity: !input currently_scrolling_up_left_entity
   currently_scrolling_down_left_entity: !input currently_scrolling_down_left_entity
@@ -253,29 +223,29 @@ trigger:
     entity_id: !input click_right_entity
     id: click
 
-  - platform: state
-    entity_id: !input scroll_up_left_entity
-    id: scroll_up_left
+  - platform: template
+    value_template: "{{ tv_scrolling_up_left != '' and states(tv_scrolling_up_left) == '1' }}"
+    id: scrolling_up_left
 
-  - platform: state
-    entity_id: !input scroll_down_left_entity
-    id: scroll_down_left
+  - platform: template
+    value_template: "{{ tv_scrolling_down_left != '' and states(tv_scrolling_down_left) == '1' }}"
+    id: scrolling_down_left
 
-  - platform: state
-    entity_id: !input scroll_up_middle_entity
-    id: scroll_up_middle
+  - platform: template
+    value_template: "{{ tv_scrolling_up_middle != '' and states(tv_scrolling_up_middle) == '1' }}"
+    id: scrolling_up_middle
 
-  - platform: state
-    entity_id: !input scroll_down_middle_entity
-    id: scroll_down_middle
+  - platform: template
+    value_template: "{{ tv_scrolling_down_middle != '' and states(tv_scrolling_down_middle) == '1' }}"
+    id: scrolling_down_middle
 
-  - platform: state
-    entity_id: !input scroll_up_right_entity
-    id: scroll_up_right
+  - platform: template
+    value_template: "{{ tv_scrolling_up_right != '' and states(tv_scrolling_up_right) == '1' }}"
+    id: scrolling_up_right
 
-  - platform: state
-    entity_id: !input scroll_down_right_entity
-    id: scroll_down_right
+  - platform: template
+    value_template: "{{ tv_scrolling_down_right != '' and states(tv_scrolling_down_right) == '1' }}"
+    id: scrolling_down_right
 
 condition:
   - condition: template
@@ -374,22 +344,10 @@ action:
                           entity_id: "{{ blink_light }}"
 
       # ── Scroll handling ──
-      - conditions: >-
-          {{ trigger.id in [
-            'scroll_up_left', 'scroll_down_left',
-            'scroll_up_middle', 'scroll_down_middle',
-            'scroll_up_right', 'scroll_down_right'
-          ] }}
+      - conditions: "{{ trigger.id.startswith('scrolling_') }}"
         sequence:
           - variables:
-              mode_name: >-
-                {% if 'left' in trigger.id %}
-                  left
-                {% elif 'middle' in trigger.id %}
-                  middle
-                {% else %}
-                  right
-                {% endif %}
+              mode_name: "{{ 'left' if 'left' in trigger.id else ('middle' if 'middle' in trigger.id else 'right') }}"
               direction: "{{ 'up' if '_up_' in trigger.id else 'down' }}"
               active_control: >-
                 {% if mode_name == 'left' %}
@@ -410,14 +368,7 @@ action:
           - repeat:
               while:
                 - condition: template
-                  value_template: >-
-                    {% if repeat.first %}
-                      true
-                    {% elif scroll_state_entity | trim != '' %}
-                      {{ states(scroll_state_entity | trim) == '1' }}
-                    {% else %}
-                      false
-                    {% endif %}
+                  value_template: "{{ states(scroll_state_entity | trim) == '1' }}"
               sequence:
                 - choose:
                     - conditions: "{{ active_control == 'brightness' }}"
@@ -468,11 +419,5 @@ action:
                           target:
                             entity_id: "{{ scenes[next_scene_idx - 1] }}"
 
-                - if:
-                    - condition: template
-                      value_template: >-
-                        {{ scroll_state_entity | trim != '' and
-                           states(scroll_state_entity | trim) == '1' }}
-                  then:
-                    - delay:
-                        milliseconds: !input scroll_repeat_interval_ms
+                - delay:
+                    milliseconds: !input scroll_repeat_interval_ms
